@@ -1,15 +1,16 @@
 #include "MyGame.h"
 #include "SDL_ttf.h"
 
+// Initialize font for rendering text
 TTF_Font* font = TTF_OpenFont("assets/arial.ttf", 22);
 static SDL_Color TEXT_COLOUR = { 255, 255, 255 }; // Text Colour is set to white.
 SDL_Surface* textSurface = nullptr;
 SDL_Texture* textTexture = nullptr;
 std::string player1ScoreTextString;
 std::string player2ScoreTextString;
-bool xray = false;
+bool xray = false; // Toggle X-ray Mode // Default value = false
 
-
+// Handles Recived game data from server.
 void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
     if (cmd == "GAME_DATA") {
         // Seperates data into different variables such as game object position and score.
@@ -25,6 +26,7 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
             game_data.player2Score = stoi(args.at(8));
         }
     } else {
+        // Update Game Object Positions.
         player1.y = game_data.player1Y;
         player2.y = game_data.player2Y;
         ball.x = game_data.ballX;
@@ -34,10 +36,12 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
     }
 }
 
+// Send data back to the server.
 void MyGame::send(std::string message) {
     messages.push_back(message);
 }
 
+// Handles player input.
 void MyGame::input(SDL_Event& event) {
     switch (event.key.keysym.sym) {
         case SDLK_w:
@@ -52,7 +56,6 @@ void MyGame::input(SDL_Event& event) {
             if (event.type == SDL_KEYUP) game_data.moveDown = false;
             break;
 
-            // When X key is pressed, xray mode will activate. When released xray will be false.
         case SDLK_x:
             xray = true;
             if (event.type == SDL_KEYUP) xray = false;
@@ -60,6 +63,7 @@ void MyGame::input(SDL_Event& event) {
     }
 }
 
+// Updates GUI Text
 void MyGame::updateGUI(SDL_Renderer* renderer) 
 {
     SDL_Rect textRect = { 64,8,0,0 };
@@ -67,12 +71,14 @@ void MyGame::updateGUI(SDL_Renderer* renderer)
     
     textSurface = TTF_RenderText_Blended_Wrapped(font, screenText.c_str(), TEXT_COLOUR, 128);
     textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    // Error Handling
     if (!textSurface) {
         std::cerr << "Failed to create text surface: " << TTF_GetError() << std::endl;
     }
     if (!textTexture) {
         std::cerr << "Failed to create text texture: " << TTF_GetError() << std::endl;
     }
+
     SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
     SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
 
@@ -97,23 +103,28 @@ void MyGame::updateGUI(SDL_Renderer* renderer)
     SDL_DestroyTexture(textTexture);
 
 }
+
+// All local player movement handled here.
 void MyGame::playerMovement()
 {
-    if (game_data.moveDown == true)
-        if (game_data.connectionID == 1)
-            player1.y -= 1 * game_data.PLAYER_SPEED;
-    if (game_data.moveUp == true)
-        if (game_data.connectionID == 1)
+    // Player Movement for player 1
+    if (game_data.connectionID == 1) { 
+        if (game_data.moveUp == true)
             player1.y += 1 * game_data.PLAYER_SPEED;
+        if (game_data.moveUp == true)
+            player1.y -= 1 * game_data.PLAYER_SPEED;
+    }
 
-    if (game_data.moveDown == true)
-        if (game_data.connectionID == 2)
-            player2.y -= 1 * game_data.PLAYER_SPEED;
-    if (game_data.moveUp == true)
-        if (game_data.connectionID == 2)
+    // Player Movement for player 2
+    if (game_data.connectionID == 2) {
+        if (game_data.moveUp == true)
             player2.y += 1 * game_data.PLAYER_SPEED;
+        if (game_data.moveUp == true)
+            player2.y -= 1 * game_data.PLAYER_SPEED;
+    }
 }
 
+// Game textures loaded Here.
 void MyGame::loadTextures(SDL_Renderer* renderer) {
     // Load player textures
     SDL_Surface* tempSurface = IMG_Load("assets/player1.png");
@@ -160,6 +171,7 @@ void MyGame::loadTextures(SDL_Renderer* renderer) {
     }
 }
 
+// Destroys textures for memory management.
 void MyGame::destroyTextures() {
     if (game_data.player1Texture) SDL_DestroyTexture(game_data.player1Texture);
     if (game_data.player2Texture) SDL_DestroyTexture(game_data.player2Texture);
@@ -173,6 +185,7 @@ void MyGame::update()
     playerMovement();
 }
 
+// Renders game objects
 void MyGame::render(SDL_Renderer* renderer) {
     if (xray) 
     {
